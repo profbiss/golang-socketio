@@ -1,14 +1,15 @@
 package gosocketio
 
 import (
-	"github.com/graarh/golang-socketio/transport"
+	"github.com/profbiss/golang-socketio/transport"
 	"strconv"
+	"time"
 )
 
 const (
-	webSocketProtocol = "ws://"
+	webSocketProtocol       = "ws://"
 	webSocketSecureProtocol = "wss://"
-	socketioUrl       = "/socket.io/?EIO=3&transport=websocket"
+	socketioUrl             = "/socket.io/?EIO=3&transport=websocket"
 )
 
 /**
@@ -21,7 +22,7 @@ type Client struct {
 
 /**
 Get ws/wss url by host and port
- */
+*/
 func GetUrl(host string, port int, secure bool) string {
 	var prefix string
 	if secure {
@@ -40,8 +41,9 @@ ws://myserver.com/socket.io/?EIO=3&transport=websocket
 
 You can use GetUrlByHost for generating correct url
 */
-func Dial(url string, tr transport.Transport) (*Client, error) {
+func Dial(url string, tr transport.Transport, reconnect bool) (*Client, error) {
 	c := &Client{}
+
 	c.initChannel()
 	c.initMethods()
 
@@ -55,7 +57,31 @@ func Dial(url string, tr transport.Transport) (*Client, error) {
 	go outLoop(&c.Channel, &c.methods)
 	go pinger(&c.Channel)
 
+	if reconnect {
+		c.On(OnDisconnection, func(channel *Channel, msg interface{}) {
+			Redial(url, c)
+		})
+	}
+
 	return c, nil
+}
+
+func Redial(url string, c *Client) {
+	var err error
+	tr := transport.GetDefaultWebsocketTransport()
+	c.initChannel()
+	for {
+		c.conn, err = tr.Connect(url)
+		if err == nil {
+			break
+		} else {
+			time.Sleep(time.Second)
+		}
+	}
+	go inLoop(&c.Channel, &c.methods)
+	go outLoop(&c.Channel, &c.methods)
+	go pinger(&c.Channel)
+
 }
 
 /**
