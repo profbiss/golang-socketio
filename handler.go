@@ -2,9 +2,10 @@ package gosocketio
 
 import (
 	"encoding/json"
-	"github.com/profbiss/golang-socketio/protocol"
 	"reflect"
 	"sync"
+
+	"github.com/profbiss/golang-socketio/protocol"
 )
 
 const (
@@ -101,6 +102,17 @@ func (m *methods) processIncomingMessage(c *Channel, msg *protocol.Message) {
 		data := f.getArgs()
 		err := json.Unmarshal([]byte(msg.Args), &data)
 		if err != nil {
+			var newFormat []json.RawMessage
+			if err := json.Unmarshal([]byte(msg.Source[2:]), &newFormat); err != nil {
+				return
+			}
+			if len(newFormat) >= 3 {
+				err := json.Unmarshal(newFormat[2], &data)
+				if err != nil {
+					return
+				}
+				f.callFunc(c, data)
+			}
 			return
 		}
 
