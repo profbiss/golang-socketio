@@ -1,6 +1,7 @@
 package gosocketio
 
 import (
+	"fmt"
 	"github.com/profbiss/golang-socketio/transport"
 	"strconv"
 	"time"
@@ -75,6 +76,7 @@ func Redial(url string, c *Client) {
 		if err == nil {
 			break
 		} else {
+			fmt.Printf("WS connect error: %v", err)
 			time.Sleep(time.Second)
 		}
 	}
